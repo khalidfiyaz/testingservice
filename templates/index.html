@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Bed Configuration</title>
+</head>
+<body>
+    <h1>Configure Test Bed for Microservice Resilience</h1>
+    <form action="/submit" method="post">
+        <h2>Test Scenarios</h2>
+        <label for="scenario">Select Scenario:</label>
+        <select name="scenario" id="scenario">
+            <option value="chaos">Chaos Testing</option>
+            <option value="load">Load Testing</option>
+            <option value="failover">Failover Testing</option>
+        </select>
+        <h2>Deployment Configuration</h2>
+        <label for="instances">Number of Instances:</label>
+        <input type="number" id="instances" name="instances" min="1" max="10">
+        <h2>Response Strategies</h2>
+        <label for="strategy">Select Strategy:</label>
+        <select name="strategy" id="strategy">
+            <option value="retry">Retry on Failure</option>
+            <option value="fallback">Use Fallback Service</option>
+        </select>
+        <h2>Canary Workload</h2>
+        <label for="canary">Enable Canary:</label>
+        <input type="checkbox" id="canary" name="canary" value="true">
+        <br><br>
+        <button type="submit">Submit Configuration</button>
+    </form>
+</body>
+</html>
