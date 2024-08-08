@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:management
+    restart: unless-stopped
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+  backend:
+    build: .
+    container_name: backend_test
+    restart: unless-stopped
+    ports:
+      - "5001:5000"  # Map host port 5001 to container port 5000
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      FLASK_APP: backend.py
+      FLASK_ENV: development
+      MICROSERVICE_URL: http://cloned_microservice:8000  
+    command: flask run --host=0.0.0.0
+
+  cloned_microservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cloned_microservice
+    ports:
+      - "8000:8000"
+    networks:
+      - booking
+
+networks:
+  booking:
+    driver: bridge
