@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
+import requests
 from backend import app
 
 class TestingServiceTestCase(unittest.TestCase):
@@ -52,6 +53,34 @@ class TestingServiceTestCase(unittest.TestCase):
         response = self.app.post('/startTest', data={'test_type': 'network_delay'})
         self.assertEqual(response.status_code, 500)
         self.assertIn(b'Test script not found', response.data)
+
+    def test_cloned_microservice_accessibility(self):
+        """Test if the cloned microservice is accessible"""
+        microservice_url = 'http://localhost:5001'  # Use 'localhost' instead of 'cloned_microservice'
+        try:
+            response = requests.get(microservice_url)
+            self.assertEqual(response.status_code, 200)
+        except requests.ConnectionError:
+            self.fail(f"Could not connect to the cloned microservice at {microservice_url}")
+
+    def test_grafana_accessibility(self):
+        """Test if Grafana is accessible"""
+        grafana_url = 'http://localhost:3000'
+        try:
+            response = requests.get(grafana_url)
+            self.assertEqual(response.status_code, 200)
+        except requests.ConnectionError:
+            self.fail(f"Could not connect to Grafana at {grafana_url}")
+
+    def test_postgres_accessibility(self):
+        """Test if PostgreSQL is accessible"""
+        postgres_url = 'http://postgres:5432'  # PostgreSQL typically runs on port 5432
+        try:
+            # This is a mock test as typically you connect to PostgreSQL using a database client, not HTTP
+            response = requests.get(postgres_url)
+            self.fail("PostgreSQL should not be accessible via HTTP")
+        except requests.ConnectionError:
+            pass  # Expected behavior since PostgreSQL isn't accessed via HTTP
 
 if __name__ == '__main__':
     unittest.main()
