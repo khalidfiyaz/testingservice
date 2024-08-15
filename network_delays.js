@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import { sleep, check } from 'k6';
 
-const BASE_URL = __ENV.MICROSERVICE_URL || 'http://default-microservice-url/';
+const BASE_URL = __ENV.MICROSERVICE_URL || 'http://cloned_microservice:5001';
 
 export let options = {
     stages: [

@@ -1,51 +1,56 @@
-version: '3.8'
+version: '3.9'
 
 services:
-  postgres:
-    image: postgres:latest
-    container_name: postgres
-    restart: unless-stopped
-    ports:
-      - '5432:5432'
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-
-  rabbitmq:
-    container_name: rabbitmq
-    image: rabbitmq:management
-    restart: unless-stopped
-    ports:
-      - 5672:5672
-      - 15672:15672
-
   backend:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     container_name: backend_test
     restart: unless-stopped
     ports:
-      - "5001:5000"  # Map host port 5001 to container port 5000
+      - "5001:5001"
     volumes:
       - .:/app
-    depends_on:
-      - postgres
-      - rabbitmq
     environment:
       FLASK_APP: backend.py
       FLASK_ENV: development
-      MICROSERVICE_URL: http://cloned_microservice:8000  
-    command: flask run --host=0.0.0.0
+      MICROSERVICE_URL: http://cloned_microservice:5001
+    command: python /app/backend.py
 
   cloned_microservice:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: CM_Docker.dockerfile
     container_name: cloned_microservice
     ports:
-      - "8000:8000"
-    networks:
-      - booking
+      - "8000:5001"
+    command: ["dotnet", "ApiGateway.dll"]
+
+  influxdb:
+    image: influxdb:2.0
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=passwordgroup50
+      - DOCKER_INFLUXDB_INIT_ORG=myorg
+      - DOCKER_INFLUXDB_INIT_BUCKET=k6
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=passwordgroup50
+    volumes:
+      - grafana-storage:/var/lib/grafana
 
 networks:
-  booking:
+  default:
     driver: bridge
+
+volumes:
+  grafana-storage:

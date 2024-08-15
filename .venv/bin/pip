@@ -1,5 +1,5 @@
 #!/bin/sh
-'''exec' "/Users/ronaleedealwis/Downloads/test bed/.venv/bin/python" "$0" "$@"
+'''exec' "/Users/ronaleedealwis/Downloads/test bed/.venv/bin/python3" "$0" "$@"
 ' '''
 # -*- coding: utf-8 -*-
 import re

@@ -2,7 +2,7 @@ import http from 'k6/http';
 import { check } from 'k6';
 
 // Retrieve the microservice URL from environment variables
-const BASE_URL = __ENV.MICROSERVICE_URL || 'http://default-microservice-url/';
+const BASE_URL = __ENV.MICROSERVICE_URL || 'http://cloned_microservice:5001/';
 
 export default function () {
     let payloads = [

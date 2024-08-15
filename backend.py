@@ -1,11 +1,13 @@
-from flask import Flask, jsonify, request, render_template_string, redirect, url_for
-import subprocess
 import os
+import subprocess
+from flask import Flask, request, jsonify, render_template_string, redirect, url_for
 
 app = Flask(__name__)
 
-# Get the microservice URL from environment variable or use a default
-MICROSERVICE_URL = os.getenv('MICROSERVICE_URL', 'http://default-microservice-url')
+# Get the microservice URL and InfluxDB URL from environment variables or use defaults
+MICROSERVICE_URL = os.getenv('MICROSERVICE_URL', 'http://cloned_microservice:5001')
+INFLUXDB_URL = os.getenv('K6_INFLUXDB', 'http://influxdb:8086/k6')
+GRAFANA_URL = os.getenv('GRAFANA_URL', 'http://localhost:3000/d/aduwhkv5ph4w0e/dashboard-group-50?orgId=1')
 
 @app.route('/')
 def home():
@@ -20,44 +22,42 @@ def start_test():
         'trigger_bugs': 'bugs.js',
         'sample_test': 'test2.js'
     }
+
+    if test_type not in script_mapping:
+        return jsonify({"error": "Invalid test type selected."}), 400
+
     script_path = os.path.join(os.path.dirname(__file__), script_mapping[test_type])
-    max_retries = 3
-    retries = 0
+    if not os.path.isfile(script_path):
+        return jsonify({"error": f"Test script not found: {script_path}"}), 500
 
-    while retries < max_retries:
-        try:
-            env = os.environ.copy()
-            env['MICROSERVICE_URL'] = MICROSERVICE_URL
-            process = subprocess.Popen(['k6', 'run', script_path],
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE,
-                                       env=env)
-            stdout, stderr = process.communicate()
-            if process.returncode == 0:
-                test_results = stdout.decode() + stderr.decode()
-                return render_template_string('''
-                    <!doctype html>
-                    <html lang="en">
-                    <head>
-                        <title>Test Results</title>
-                        <style>
-                            pre {white-space: pre-wrap; word-wrap: break-word;}
-                        </style>
-                    </head>
-                    <body>
-                        <h1>Test Results</h1>
-                        <pre>{{ results }}</pre>
-                        <a href="/">Back to Test Form</a>
-                    </body>
-                    </html>
-                ''', results=test_results)
-            else:
-                retries += 1
-        except Exception as e:
-            retries += 1
-            continue
+    env = os.environ.copy()
+    env['K6_INFLUXDB'] = INFLUXDB_URL
 
-    return jsonify({"error": "Failed to start test after {} retries.".format(max_retries)}), 500
+    process = subprocess.Popen(
+        ['k6', 'run', '--out', f'influxdb={INFLUXDB_URL}', script_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env
+    )
+    stdout, stderr = process.communicate()
+
+    if process.returncode == 0:
+        return render_template_string('''
+            <!doctype html>
+            <html lang="en">
+            <head>
+                <title>Test Results</title>
+            </head>
+            <body>
+                <h1>Test Started Successfully</h1>
+                <p>Check Grafana for test results.</p>
+                <p><a href="{{ grafana_url }}" target="_blank">View Results on Grafana</a></p>
+                <a href="/">Back to Test Form</a>
+            </body>
+            </html>
+        ''', grafana_url=GRAFANA_URL)
+    else:
+        return jsonify({"error": "Test failed to start. Error: " + stderr.decode()}), 500
 
 @app.route('/testform', methods=['GET', 'POST'])
 def test_form():
