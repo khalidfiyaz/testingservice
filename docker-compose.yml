@@ -15,7 +15,15 @@ services:
       FLASK_APP: backend.py
       FLASK_ENV: development
       MICROSERVICE_URL: http://cloned_microservice:5001
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: mydb
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: passwordgroup50
     command: python /app/backend.py
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   cloned_microservice:
     build:
@@ -25,18 +33,30 @@ services:
     ports:
       - "8000:5001"
     command: ["dotnet", "ApiGateway.dll"]
-
-  influxdb:
-    image: influxdb:2.0
-    container_name: influxdb
-    ports:
-      - "8086:8086"
     environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=admin
-      - DOCKER_INFLUXDB_INIT_PASSWORD=passwordgroup50
-      - DOCKER_INFLUXDB_INIT_ORG=myorg
-      - DOCKER_INFLUXDB_INIT_BUCKET=k6
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: mydb
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: passwordgroup50
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: passwordgroup50
+      POSTGRES_DB: mydb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   grafana:
     image: grafana/grafana
@@ -45,8 +65,16 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=passwordgroup50
+      - GF_DATABASE_TYPE=postgres
+      - GF_DATABASE_HOST=postgres:5432
+      - GF_DATABASE_NAME=mydb
+      - GF_DATABASE_USER=myuser
+      - GF_DATABASE_PASSWORD=passwordgroup50
     volumes:
       - grafana-storage:/var/lib/grafana
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 networks:
   default:
@@ -54,3 +82,4 @@ networks:
 
 volumes:
   grafana-storage:
+  postgres-data:

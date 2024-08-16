@@ -17,7 +17,7 @@ WORKDIR /app
 COPY . /app
 
 # Clone the booking microservice repository if the directory doesn't exist
-RUN [ ! -d /app/booking-microservices ] && git clone https://github.com/Group-50/booking-microservices.git /app/booking-microservices || echo "Directory already exists"
+RUN [ ! -d /app/booking-microservices ] && git clone https://github.com/meysamhadeli/booking-microservices || echo "Directory already exists"
 
 # Copy k6 binary from the previous stage
 COPY --from=k6-downloader /k6-v0.43.1-linux-amd64/k6 /usr/local/bin/k6

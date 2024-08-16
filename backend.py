@@ -4,14 +4,28 @@ from flask import Flask, request, jsonify, render_template_string, redirect, url
 
 app = Flask(__name__)
 
-# Get the microservice URL and InfluxDB URL from environment variables or use defaults
+# Get the microservice URL and Grafana URL from environment variables or use defaults
 MICROSERVICE_URL = os.getenv('MICROSERVICE_URL', 'http://cloned_microservice:5001')
-INFLUXDB_URL = os.getenv('K6_INFLUXDB', 'http://influxdb:8086/k6')
-GRAFANA_URL = os.getenv('GRAFANA_URL', 'http://localhost:3000/d/aduwhkv5ph4w0e/dashboard-group-50?orgId=1')
+GRAFANA_URL = os.getenv('GRAFANA_URL', 'http://localhost:3000/d/dduyazd8n7rwgc/dashboard-test-results?orgId=1')
 
 @app.route('/')
 def home():
     return redirect(url_for('test_form'))
+
+@app.route('/check_db')
+def check_db():
+    import psycopg2
+    try:
+        connection = psycopg2.connect(
+            host=os.getenv('POSTGRES_HOST', 'postgres'),
+            database=os.getenv('POSTGRES_DB', 'mydb'),
+            user=os.getenv('POSTGRES_USER', 'myuser'),
+            password=os.getenv('POSTGRES_PASSWORD', 'mypassword')
+        )
+        return "Connected to the database successfully!"
+    except Exception as e:
+        return f"Failed to connect to the database: {str(e)}"
+
 
 @app.route('/startTest', methods=['POST'])
 def start_test():
@@ -31,10 +45,9 @@ def start_test():
         return jsonify({"error": f"Test script not found: {script_path}"}), 500
 
     env = os.environ.copy()
-    env['K6_INFLUXDB'] = INFLUXDB_URL
 
     process = subprocess.Popen(
-        ['k6', 'run', '--out', f'influxdb={INFLUXDB_URL}', script_path],
+        ['k6', 'run', script_path],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=env
