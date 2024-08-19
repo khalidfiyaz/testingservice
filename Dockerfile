@@ -28,6 +28,9 @@ COPY requirements.txt /app/
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
+# install psycopg2-binary
+RUN pip install psycopg2-binary
+
 # Make port 5001 available to the world outside this container
 EXPOSE 5001
 

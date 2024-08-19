@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import requests
+import psycopg2
 from backend import app
 
 class TestingServiceTestCase(unittest.TestCase):
@@ -54,6 +55,7 @@ class TestingServiceTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertIn(b'Test script not found', response.data)
 
+
     def test_cloned_microservice_accessibility(self):
         """Test if the cloned microservice is accessible"""
         microservice_url = 'http://localhost:5001'  # Use 'localhost' instead of 'cloned_microservice'
@@ -74,13 +76,19 @@ class TestingServiceTestCase(unittest.TestCase):
 
     def test_postgres_accessibility(self):
         """Test if PostgreSQL is accessible"""
-        postgres_url = 'http://postgres:5432'  # PostgreSQL typically runs on port 5432
         try:
-            # This is a mock test as typically you connect to PostgreSQL using a database client, not HTTP
-            response = requests.get(postgres_url)
-            self.fail("PostgreSQL should not be accessible via HTTP")
-        except requests.ConnectionError:
-            pass  # Expected behavior since PostgreSQL isn't accessed via HTTP
-
+            print("Attempting to connect to PostgreSQL...")
+            connection = psycopg2.connect(
+                host='localhost',
+                port=5432,
+                database='mydb',
+                user='myuser',
+                password='passwordgroup50'
+            )
+            print("Connection successful.")
+            connection.close()  # Ensure the connection is closed after testing
+        except psycopg2.OperationalError as e:
+            print(f"Failed to connect: {str(e)}")
+            self.fail(f"PostgreSQL is not accessible: {str(e)}")
 if __name__ == '__main__':
     unittest.main()

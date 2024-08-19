@@ -1,6 +1,9 @@
 import os
 import subprocess
 from flask import Flask, request, jsonify, render_template_string, redirect, url_for
+import logging
+import psycopg2
+import json
 
 app = Flask(__name__)
 
@@ -12,20 +15,8 @@ GRAFANA_URL = os.getenv('GRAFANA_URL', 'http://localhost:3000/d/dduyazd8n7rwgc/d
 def home():
     return redirect(url_for('test_form'))
 
-@app.route('/check_db')
-def check_db():
-    import psycopg2
-    try:
-        connection = psycopg2.connect(
-            host=os.getenv('POSTGRES_HOST', 'postgres'),
-            database=os.getenv('POSTGRES_DB', 'mydb'),
-            user=os.getenv('POSTGRES_USER', 'myuser'),
-            password=os.getenv('POSTGRES_PASSWORD', 'mypassword')
-        )
-        return "Connected to the database successfully!"
-    except Exception as e:
-        return f"Failed to connect to the database: {str(e)}"
-
+# Set up basic logging
+logging.basicConfig(level=logging.INFO)
 
 @app.route('/startTest', methods=['POST'])
 def start_test():
@@ -55,6 +46,39 @@ def start_test():
     stdout, stderr = process.communicate()
 
     if process.returncode == 0:
+        logging.info('Test executed successfully, now attempting to write to PostgreSQL.')
+
+        try:
+            connection = psycopg2.connect(
+                host=os.getenv('POSTGRES_HOST', 'postgres'),
+                database=os.getenv('POSTGRES_DB', 'mydb'),
+                user=os.getenv('POSTGRES_USER', 'myuser'),
+                password=os.getenv('POSTGRES_PASSWORD', 'passwordgroup50')
+            )
+            cursor = connection.cursor()
+
+            # Insert into test_results table
+            cursor.execute("INSERT INTO test_results (result, details) VALUES (%s, %s) RETURNING id",
+                           ("Test success", "results added to table"))
+            test_id = cursor.fetchone()[0]
+            connection.commit()
+
+            # Parse detailed results and insert into detailed_test_results table
+            detailed_results = parse_k6_output(stdout.decode('utf-8'))
+            logging.info(f'Parsed detailed results: {detailed_results}')
+
+            for detail in detailed_results:
+                cursor.execute("INSERT INTO detailed_test_results (test_id, metric, value) VALUES (%s, %s, %s)",
+                               (test_id, detail['metric'], detail['value']))
+            
+            connection.commit()
+            cursor.close()
+            connection.close()
+            logging.info('Data successfully written to PostgreSQL.')
+
+        except Exception as e:
+            logging.error(f'Error writing to PostgreSQL: {str(e)}')
+
         return render_template_string('''
             <!doctype html>
             <html lang="en">
@@ -96,6 +120,20 @@ def test_form():
         </body>
         </html>
     ''')
+
+def parse_k6_output(output):
+    detailed_results = []
+    lines = output.splitlines()
+    for line in lines:
+        try:
+            parts = line.split()
+            metric = parts[0]
+            value = float(parts[1])
+            detailed_results.append({'metric': metric, 'value': value})
+        except (IndexError, ValueError) as e:
+            logging.error(f"Error parsing line: {line} - {str(e)}")
+            continue
+    return detailed_results
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
